@@ -1,17 +1,26 @@
 # Attribution（pg-quizleague）
 
-本遊戲使用以下資源（即使 CC0 仍署名）：
-
-## 美術
-- Kenney.nl packs（CC0）— 見 `assets/licenses/` 與 [game-assets/ATTRIBUTION.md](https://github.com/sampot/playgrounds/blob/main/game-assets/ATTRIBUTION.md)
-- 角色／圖示依類型取自 Toon Characters、Sports Pack、Pixel Platformer、Pixel Shmup、Playing Cards、Boardgame Pack、Food Kit、Fish Pack 等
+本遊戲使用以下資源（即使 CC0 仍署名）。
 
 ## 音效
-- Kenney UI Audio、Impact Sounds、Casino Audio、RPG Audio（CC0）
+- **Kenney UI Audio** — Kenney — CC0 — https://kenney.nl/assets/ui-audio  
+  路徑：`assets/audio/click.ogg`、`ok.ogg`、`soft.ogg`
+- **Kenney Impact Sounds** — Kenney — CC0 — https://kenney.nl/assets/impact-sounds  
+  路徑：`assets/audio/buzz.ogg`、`hit.ogg`
+- **Kenney Casino Audio** — Kenney — CC0 — https://kenney.nl/assets/casino-audio  
+  路徑：`assets/audio/coin.ogg`
 
 ## 音樂
-- Dylann Taylor — BLIPPY BITS（Loop）https://dylanntaylor.itch.io/blippy-bits
-- HydroGene — High Quality 16-bit RPG Music（部分策略／RPG 曲）https://hydrogene.itch.io/high-quality-16bit-music
+- **Not Jam Music Pack — BreakbeatChips（Loop）** — Not Jam — 依 itch 授權 — https://not-jam.itch.io/  
+  路徑：`assets/audio/music.ogg`
+- **Kenney Music Jingles（8-Bit）** — Kenney — CC0 — https://kenney.nl/assets/music-jingles  
+  路徑：`assets/audio/win.ogg`
 
-## 類型
-- 知識競賽戰役：賽季題庫＋段位。
+## 授權檔
+- `assets/licenses/kenney-toon.txt`
+- `assets/licenses/blippy-bits.txt`
+- `assets/ui-audio-license.txt`
+- `assets/music-license.txt`
+
+## 題庫
+- 內建繁中常識／台灣地理文化題，由作者編寫，無第三方版權。

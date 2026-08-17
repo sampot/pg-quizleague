@@ -1,20 +1,18 @@
-const KEY = "/api/kv/pg-quizleague:progress";
+const KEY = "progress";
 
-export async function loadProgress(fetcher = fetch) {
+/** @param {typeof window.PG} pg */
+export async function loadProgress(pg) {
   try {
-    const res = await fetcher(KEY);
-    if (!res.ok) return {};
-    const text = await res.text();
-    if (!text) return {};
-    return JSON.parse(text);
+    const raw = await pg.kv.get(KEY);
+    if (!raw) return {};
+    return JSON.parse(raw);
   } catch {
     return {};
   }
 }
 
-export async function saveProgress(data, fetcher = fetch) {
-  try {
-    await fetcher(KEY, { method: "PUT", body: JSON.stringify(data) });
-  } catch {}
+/** @param {typeof window.PG} pg @param {Record<string, unknown>} data */
+export async function saveProgress(pg, data) {
+  await pg.kv.put(KEY, JSON.stringify(data));
   return data;
 }

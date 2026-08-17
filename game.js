@@ -1,62 +1,311 @@
-export const QUESTIONS=[["臺灣最高峰？", ["玉山", "雪山", "合歡山", "阿里山"], 0], ["臺灣最長河川？", ["淡水河", "濁水溪", "高屏溪", "曾文溪"], 1], ["珍珠奶茶發源於？", ["臺灣", "泰國", "日本", "韓國"], 0], ["臺灣國際電話碼？", ["+886", "+81", "+852", "+65"], 0], ["日月潭位於？", ["南投", "花蓮", "嘉義", "宜蘭"], 0], ["平溪知名活動？", ["放天燈", "搶孤", "蜂炮", "龍舟"], 0], ["端午節常吃？", ["粽子", "月餅", "湯圓", "年糕"], 0], ["臺北101地上樓層？", ["101", "88", "99", "108"], 0], ["太陽系最大行星？", ["火星", "木星", "土星", "地球"], 1], ["水的化學式？", ["CO2", "H2O", "O2", "NaCl"], 1], ["一年通常幾天？", ["360", "365", "366", "364"], 1], ["世界最大洋？", ["印度洋", "太平洋", "大西洋", "北冰洋"], 1], ["三角形內角和？", ["90", "180", "270", "360"], 1], ["聲音不能在哪傳播？", ["空氣", "水", "真空", "鋼"], 2], ["植物光合作用吸收？", ["氧氣", "氮氣", "二氧化碳", "氫"], 2], ["人體最大器官？", ["心臟", "皮膚", "肺", "肝"], 1], ["紅血球主要運送？", ["氧氣", "糖", "神經", "骨質"], 0], ["閏年二月幾天？", ["28", "29", "30", "31"], 1], ["地球天然衛星？", ["月球", "太陽", "火星", "金星"], 0], ["水的冰點？", ["0°C", "10°C", "32°C", "100°C"], 0], ["1公里幾公尺？", ["100", "500", "1000", "10000"], 2], ["唯一偶質數？", ["1", "2", "4", "6"], 1], ["蒙娜麗莎作者？", ["梵谷", "達文西", "莫內", "畢卡索"], 1], ["奧運五環幾環？", ["4", "5", "6", "7"], 1], ["鋼琴標準琴鍵？", ["66", "72", "88", "100"], 2], ["英文字母數？", ["24", "25", "26", "27"], 2], ["日本首都？", ["大阪", "京都", "東京", "札幌"], 2], ["澳洲首都？", ["雪梨", "墨爾本", "坎培拉", "伯斯"], 2], ["世界最高峰？", ["玉山", "聖母峰", "富士山", "白朗峰"], 1], ["章魚幾顆心臟？", ["1", "2", "3", "4"], 2], ["蜜蜂製造？", ["蜂蜜", "牛奶", "絲", "墨汁"], 0], ["鯨魚屬於？", ["魚類", "哺乳類", "兩棲類", "爬蟲類"], 1], ["彩虹通常幾色？", ["5", "6", "7", "8"], 2], ["CPU中文？", ["中央處理器", "記憶體", "硬碟", "顯示器"], 0], ["HTML描述？", ["網頁結構", "資料庫", "音訊", "系統"], 0], ["二進位使用？", ["0與1", "1與2", "A與B", "正與負"], 0], ["Elo用於？", ["競技排名", "溫度", "音量", "壓縮"], 0], ["臺灣東側海洋？", ["太平洋", "印度洋", "大西洋", "北冰洋"], 0], ["臺灣貨幣？", ["新臺幣", "日圓", "美元", "歐元"], 0], ["故宮位於臺北哪區？", ["士林", "信義", "萬華", "北投"], 0], ["鹽水蜂炮在？", ["臺南", "基隆", "臺東", "新竹"], 0], ["阿里山著名交通？", ["森林鐵路", "纜車", "捷運", "單軌"], 0], ["貓空以何聞名？", ["茶園", "鹽田", "稻田", "漁港"], 0], ["野柳著名岩石？", ["女王頭", "豆腐岩", "燭台石", "以上皆是"], 3], ["臺灣本島最南端？", ["鵝鑾鼻", "富貴角", "三貂角", "蘇澳"], 0]].map(([text,choices,answer])=>({text,choices,answer}));
+import {
+  MATCHES_PER_SEASON,
+  QUESTIONS_PER_MATCH,
+  WINS_TO_PASS,
+  pickMatchQuestions,
+} from "./questions.js";
+import { opponentRating, rankForRating } from "./ranks.js";
 
-export function elo(rating,opponent,win,k=32){
-  return Math.round(rating+k*((win?1:0)-1/(1+10**((opponent-rating)/400))));
+export const BUZZ_MS = 4000;
+export const ANSWER_MS = 6000;
+export const REVEAL_MS = 1500;
+
+/** @param {number} rating @param {number} opponent @param {boolean} win @param {number} [k] */
+export function elo(rating, opponent, win, k = 32) {
+  const expected = 1 / (1 + 10 ** ((opponent - rating) / 400));
+  return Math.round(rating + k * ((win ? 1 : 0) - expected));
 }
 
-function matchQuestions(match){
-  return Array.from({length:10},(_,index)=>QUESTIONS[((match-1)*7+index)%QUESTIONS.length]);
+/** @param {boolean} correct @param {number} combo @param {number} msLeft */
+export function scorePoints(correct, combo, msLeft) {
+  if (!correct) return 0;
+  const speed = Math.max(0, Math.floor(msLeft / 1000)) * 2;
+  const streak = combo > 1 ? (combo - 1) * 2 : 0;
+  return 10 + streak + speed;
 }
 
-export function createGame(){
-  return{rating:1200,match:1,index:0,score:0,aiScore:0,seasonWins:0,questions:matchQuestions(1),betweenMatches:false,meter:0,outcome:"playing",msg:"賽季開幕！每場十題。"};
+/** @param {ReturnType<typeof createGame>} state */
+export function aiBuzzChance(state) {
+  const m = state.match;
+  const q = state.questionIndex;
+  return Math.min(0.88, 0.32 + m * 0.045 + q * 0.015);
 }
 
-export function getLegalActions(state){
-  if(state.outcome!=="playing")return[];
-  return state.betweenMatches?["nextMatch"]:["answer1","answer2","answer3","answer4"];
+/** @param {ReturnType<typeof createGame>} state */
+export function aiAnswerCorrect(state) {
+  const q = state.questions[state.questionIndex];
+  const difficulty = Math.min(0.82, 0.38 + state.match * 0.04 + state.questionIndex * 0.02);
+  const hash = (state.match * 17 + state.questionIndex * 11 + q.answer * 3) % 100;
+  return hash / 100 < difficulty;
 }
 
-export function applyAction(state,action){
-  const next=structuredClone(state);
-  if(action==="nextMatch"&&next.betweenMatches){
-    next.match++;
-    next.index=0;
-    next.score=0;
-    next.aiScore=0;
-    next.questions=matchQuestions(next.match);
-    next.betweenMatches=false;
-    next.msg=`第 ${next.match} 場開始，對手 Elo ${1180+next.match*12}。`;
+/** @param {ReturnType<typeof createGame>} state @param {number} deltaMs */
+export function tick(state, deltaMs) {
+  const next = structuredClone(state);
+  if (next.outcome !== "playing") return next;
+
+  if (next.phase === "buzz") {
+    next.buzzMsLeft = Math.max(0, next.buzzMsLeft - deltaMs);
+    if (next.buzzMsLeft === 0 && !next.buzzWinner) {
+      const roll = ((next.match * 31 + next.questionIndex * 13 + next.tick) % 100) / 100;
+      next.tick++;
+      if (roll < aiBuzzChance(next)) {
+        next.buzzWinner = "ai";
+        next.phase = "ai_turn";
+        next.msg = "對手搶答！";
+        return resolveAiTurn(next);
+      }
+      next.phase = "reveal";
+      next.msg = "無人搶答";
+      next.lastCorrect = null;
+      next.revealMsLeft = REVEAL_MS;
+    }
     return next;
   }
-  if(next.betweenMatches||!action.startsWith("answer"))return next;
-  const question=next.questions[next.index];
-  const choice=Number(action.at(-1))-1;
-  const correct=choice===question.answer;
-  next.score+=correct?10:0;
-  const aiCorrect=((next.match*13+next.index*7)%10)<Math.min(8,4+Math.floor(next.match/2));
-  next.aiScore+=aiCorrect?10:0;
-  next.msg=correct?"答對！":`答錯，答案：${question.choices[question.answer]}`;
-  next.index++;
-  next.meter=((next.match-1)*10+next.index);
-  if(next.index===10){
-    const won=next.score>=next.aiScore;
-    next.seasonWins+=won?1:0;
-    next.rating=elo(next.rating,1180+next.match*12,won);
-    if(next.match===10){
-      next.outcome=next.seasonWins>=6?"won":"lost";
-      next.msg=`賽季結束：${next.seasonWins} 勝 · Elo ${next.rating}`;
-      next.meter=100;
-    }else{
-      next.betweenMatches=true;
-      next.msg=`第 ${next.match} 場${won?"勝利":"落敗"} · Elo ${next.rating}`;
+
+  if (next.phase === "answer") {
+    next.answerMsLeft = Math.max(0, next.answerMsLeft - deltaMs);
+    if (next.answerMsLeft === 0) {
+      return finishPlayerAnswer(next, null);
+    }
+    return next;
+  }
+
+  if (next.phase === "reveal") {
+    next.revealMsLeft = Math.max(0, (next.revealMsLeft ?? REVEAL_MS) - deltaMs);
+    if (next.revealMsLeft === 0) {
+      return advanceAfterReveal(next);
     }
   }
+
   return next;
 }
 
-export function summarize(state){
-  const question=state.questions[Math.min(state.index,9)];
-  return{match:`${state.match}/10`,rating:state.rating,record:`${state.seasonWins} 勝`,question:`${state.index}/10`,meter:state.meter,score:state.score,msg:state.betweenMatches||state.outcome!=="playing"?state.msg:`${question.text} · ${question.choices.map((choice,index)=>`${index+1}.${choice}`).join(" / ")}`,outcome:state.outcome};
+/** @param {ReturnType<typeof createGame>} state */
+function resolveAiTurn(state) {
+  const correct = aiAnswerCorrect(state);
+  const q = state.questions[state.questionIndex];
+  state.lastPick = correct ? q.answer : (q.answer + 1) % 4;
+  state.lastCorrect = correct;
+  state.aiScore += scorePoints(correct, 0, 0);
+  state.combo = 0;
+  state.msg = correct ? `對手答對：${q.choices[q.answer]}` : "對手答錯";
+  state.phase = "reveal";
+  state.revealMsLeft = REVEAL_MS;
+  return state;
 }
-export function getOutcome(s){return s.outcome}
+
+/** @param {{ rating?: number, seed?: number }} [opts] */
+export function createGame(opts = {}) {
+  const rating = opts.rating ?? 1200;
+  const seed = opts.seed ?? 0;
+  return {
+    rating,
+    match: 1,
+    questionIndex: 0,
+    playerScore: 0,
+    aiScore: 0,
+    seasonWins: 0,
+    combo: 0,
+    maxCombo: 0,
+    phase: "buzz",
+    buzzMsLeft: BUZZ_MS,
+    answerMsLeft: ANSWER_MS,
+    revealMsLeft: REVEAL_MS,
+    questions: pickMatchQuestions(1, seed),
+    buzzWinner: null,
+    lastPick: null,
+    lastCorrect: null,
+    betweenMatches: false,
+    outcome: "playing",
+    msg: "賽季開幕！看題搶答，先按先答。",
+    tick: 0,
+    seed,
+    meter: 0,
+  };
+}
+
+/** @param {ReturnType<typeof createGame>} state */
+export function currentQuestion(state) {
+  return state.questions[Math.min(state.questionIndex, QUESTIONS_PER_MATCH - 1)];
+}
+
+/** @param {ReturnType<typeof createGame>} state */
+export function playerBuzz(state) {
+  if (state.outcome !== "playing" || state.phase !== "buzz" || state.buzzWinner) {
+    return state;
+  }
+  const next = structuredClone(state);
+  next.buzzWinner = "player";
+  next.phase = "answer";
+  next.answerMsLeft = ANSWER_MS;
+  next.msg = "你搶到了！快選答案";
+  return next;
+}
+
+/** @param {ReturnType<typeof createGame>} state @param {number|null} index */
+function finishPlayerAnswer(state, index) {
+  const q = state.questions[state.questionIndex];
+  const picked = index ?? -1;
+  const correct = picked === q.answer;
+  state.lastPick = picked >= 0 ? picked : null;
+  state.lastCorrect = correct;
+  if (correct) {
+    state.combo += 1;
+    state.maxCombo = Math.max(state.maxCombo, state.combo);
+    const pts = scorePoints(true, state.combo, state.answerMsLeft);
+    state.playerScore += pts;
+    state.msg = `答對 +${pts}（連擊 ${state.combo}）`;
+  } else {
+    state.combo = 0;
+    state.msg =
+      picked >= 0
+        ? `答錯，正解：${q.choices[q.answer]}`
+        : `時間到，正解：${q.choices[q.answer]}`;
+  }
+  state.phase = "reveal";
+  state.revealMsLeft = REVEAL_MS;
+  return state;
+}
+
+/** @param {ReturnType<typeof createGame>} state @param {number} index */
+export function selectAnswer(state, index) {
+  if (state.outcome !== "playing" || state.phase !== "answer") return state;
+  if (!Number.isInteger(index) || index < 0 || index > 3) return state;
+  const next = structuredClone(state);
+  return finishPlayerAnswer(next, index);
+}
+
+/** @param {ReturnType<typeof createGame>} state */
+function advanceAfterReveal(state) {
+  const next = structuredClone(state);
+  next.questionIndex += 1;
+  next.buzzWinner = null;
+  next.lastPick = null;
+  next.lastCorrect = null;
+  next.buzzMsLeft = BUZZ_MS;
+  next.answerMsLeft = ANSWER_MS;
+
+  if (next.questionIndex >= QUESTIONS_PER_MATCH) {
+    const won = next.playerScore > next.aiScore;
+    const tied = next.playerScore === next.aiScore;
+    const matchWin = won || (tied && next.playerScore >= next.aiScore);
+    if (matchWin && !won && tied) {
+      /* tie goes to higher buzz count — use player score tiebreak already equal */
+    }
+    const didWin = next.playerScore >= next.aiScore;
+    next.seasonWins += didWin ? 1 : 0;
+    next.rating = elo(next.rating, opponentRating(next.match), didWin);
+    if (next.match >= MATCHES_PER_SEASON) {
+      next.outcome = next.seasonWins >= WINS_TO_PASS ? "won" : "lost";
+      next.phase = "ended";
+      next.msg = `賽季結束 · ${next.seasonWins} 勝 · Elo ${next.rating}`;
+      next.meter = 100;
+      return next;
+    }
+    next.betweenMatches = true;
+    next.phase = "intermission";
+    next.msg = `第 ${next.match} 場${didWin ? "勝" : "敗"} ${next.playerScore}:${next.aiScore} · Elo ${next.rating}`;
+    next.meter = next.match * 10;
+    return next;
+  }
+
+  next.phase = "buzz";
+  next.msg = `第 ${next.questionIndex + 1} 題 · 搶答！`;
+  next.meter = ((next.match - 1) * 10 + next.questionIndex) * (100 / (MATCHES_PER_SEASON * QUESTIONS_PER_MATCH));
+  return next;
+}
+
+/** @param {ReturnType<typeof createGame>} state */
+export function advance(state) {
+  if (state.phase === "reveal" && (state.revealMsLeft ?? 0) <= 0) {
+    return advanceAfterReveal(state);
+  }
+  if (state.phase === "intermission" && state.betweenMatches) {
+    return startNextMatch(state);
+  }
+  if (state.phase === "reveal") {
+    const next = structuredClone(state);
+    next.revealMsLeft = 0;
+    return advanceAfterReveal(next);
+  }
+  return state;
+}
+
+/** @param {ReturnType<typeof createGame>} state */
+export function startNextMatch(state) {
+  if (!state.betweenMatches) return state;
+  const next = structuredClone(state);
+  next.match += 1;
+  next.questionIndex = 0;
+  next.playerScore = 0;
+  next.aiScore = 0;
+  next.combo = 0;
+  next.betweenMatches = false;
+  next.phase = "buzz";
+  next.buzzMsLeft = BUZZ_MS;
+  next.questions = pickMatchQuestions(next.match, next.seed);
+  next.msg = `第 ${next.match} 場 · 對手 Elo ${opponentRating(next.match)}`;
+  return next;
+}
+
+/** @param {ReturnType<typeof createGame>} state @param {number} [rating] */
+export function restartSeason(state, rating = state.rating) {
+  return createGame({ rating, seed: (state.seed + 1) % 9973 });
+}
+
+/** @param {ReturnType<typeof createGame>} state */
+export function summarize(state) {
+  const q = currentQuestion(state);
+  const rank = rankForRating(state.rating);
+  return {
+    match: `${state.match}/${MATCHES_PER_SEASON}`,
+    question: `${Math.min(state.questionIndex + 1, QUESTIONS_PER_MATCH)}/${QUESTIONS_PER_MATCH}`,
+    rating: state.rating,
+    rank: rank.label,
+    rankColor: rank.color,
+    record: `${state.seasonWins} 勝`,
+    playerScore: state.playerScore,
+    aiScore: state.aiScore,
+    combo: state.combo,
+    maxCombo: state.maxCombo,
+    phase: state.phase,
+    buzzMsLeft: state.buzzMsLeft,
+    answerMsLeft: state.answerMsLeft,
+    meter: state.meter ?? 0,
+    msg: state.msg,
+    questionText: q?.text ?? "",
+    choices: q?.choices ?? [],
+    buzzWinner: state.buzzWinner,
+    lastPick: state.lastPick,
+    lastCorrect: state.lastCorrect,
+    opponentElo: opponentRating(state.match),
+    outcome: state.outcome,
+  };
+}
+
+/** @param {ReturnType<typeof createGame>} state */
+export function getOutcome(state) {
+  return state.outcome;
+}
+
+/** @param {ReturnType<typeof createGame>} state */
+export function canBuzz(state) {
+  return state.outcome === "playing" && state.phase === "buzz" && !state.buzzWinner;
+}
+
+/** @param {ReturnType<typeof createGame>} state */
+export function canAnswer(state) {
+  return state.outcome === "playing" && state.phase === "answer";
+}
+
+/** @param {ReturnType<typeof createGame>} state */
+export function canContinue(state) {
+  return (
+    state.outcome !== "playing" ||
+    state.phase === "intermission" ||
+    (state.phase === "reveal" && (state.revealMsLeft ?? 0) <= 0)
+  );
+}
+
+export { rankForRating, opponentRating, pickMatchQuestions, QUESTIONS_PER_MATCH, MATCHES_PER_SEASON, WINS_TO_PASS };
